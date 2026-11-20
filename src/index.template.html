@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="华南师范大学佛山校区南海校园的交互式三维沙盘。">
+<title>南海校园 · 三维地图</title>
+<style>
+/* CAMPUS_CSS */
+</style>
+</head>
+<body>
+  <header class="header">
+    <span class="brand-mark" aria-hidden="true">华</span>
+    <div class="identity">
+      <h1>华南师范大学</h1>
+      <p>佛山校区 · 南海校园</p>
+    </div>
+    <button class="source-button" type="button" id="open-sources">资料与比例</button>
+  </header>
+  <main id="campus-layout">
+    <aside class="sidebar" id="sidebar" aria-labelledby="list-title">
+      <div class="side-heading">
+        <h2 id="list-title">校园地标</h2>
+        <button class="sidebar-close" type="button" id="collapse-sidebar" aria-controls="sidebar" aria-expanded="true" aria-label="收起校园地标">收起</button>
+        <p>选择地点，在沙盘上定位</p>
+      </div>
+      <nav id="locations" aria-label="校园地标"></nav>
+      <div class="side-footer">楼栋外观和高度为近似建模</div>
+    </aside>
+    <section id="map" aria-label="南海校园三维沙盘">
+      <canvas class="scene" id="scene" aria-label="交互式校园模型">请用支持 Canvas 的浏览器打开。</canvas>
+      <div class="layer" id="labels"></div>
+      <div class="view-bar">
+        <button type="button" class="map-button sidebar-open" id="expand-sidebar" aria-controls="sidebar" aria-expanded="false" hidden>展开地标</button>
+        <div class="segmented" role="group" aria-label="视角">
+          <button type="button" id="view-3d" aria-pressed="true">三维</button>
+          <button type="button" id="view-top" aria-pressed="false">俯视</button>
+        </div>
+        <button type="button" class="map-button labels-button" id="toggle-labels" aria-pressed="true">地名</button>
+      </div>
+      <button type="button" class="compass map-button" id="north" title="将北方转回上方" aria-label="将北方转回上方">
+        <span class="compass-north">北</span><span class="needle" aria-hidden="true"></span>
+      </button>
+      <div class="map-bottom">
+        <div class="map-scale" aria-label="近似水平比例尺"><span id="scale-line"></span><span id="scale-label"></span></div>
+        <p id="map-hint">左键拖动旋转 · 滚轮缩放 · 右键拖动平移</p>
+      </div>
+      <div class="navigation">
+        <div class="zoom-stack" role="group" aria-label="地图导航">
+          <button type="button" class="map-button" id="zoom-in" title="放大" aria-label="放大">+</button>
+          <button type="button" class="map-button" id="zoom-out" title="缩小" aria-label="缩小">−</button>
+          <button type="button" class="map-button" id="reset" title="返回校园全景" aria-label="返回校园全景"><span class="reset-icon" aria-hidden="true"></span></button>
+        </div>
+        <div class="overview">
+          <canvas id="overview" width="278" height="294" aria-label="校园小地图，点击平移主视图"></canvas>
+          <span>校园全图</span>
+        </div>
+      </div>
+      <article id="detail" class="detail" aria-live="polite" hidden>
+        <button type="button" class="close-button" id="close-detail" aria-label="关闭地点详情">×</button>
+        <p class="detail-category" id="detail-category"></p>
+        <h2 id="detail-title"></h2>
+        <p class="detail-height" id="detail-height"></p>
+        <p class="detail-description" id="detail-description"></p>
+      </article>
+      <p class="fallback" id="fallback" hidden>当前浏览器的 WebGL 不可用，已切换到俯视地图。</p>
+    </section>
+  </main>
+  <dialog id="sources">
+    <form method="dialog"><button class="close-button" aria-label="关闭资料面板">×</button></form>
+    <h2>资料与比例</h2>
+    <p>以你提供的高德平面图描绘校园边界和建筑轮廓，参考倾斜视图估算楼高，用同位置的卫星图校对跑道、屋顶、植被和水系。田径场西侧的新工科大楼采用卫星图轮廓。</p>
+    <p>比例尺、楼高、立面和树木位置均为近似值，适合查看校园布局。</p>
+    <ul>
+      <li><a href="https://statics.scnu.edu.cn/pics/psy/2017/0615/1497490556137490.pdf" target="_blank" rel="noopener noreferrer">华南师范大学南海校区平面图</a></li>
+      <li><a href="https://lib.scnu.edu.cn/services/xinshengkongjian/guanshedaohang/2018/0109/88.html" target="_blank" rel="noopener noreferrer">南海校区图书馆馆舍导航</a></li>
+      <li><a href="https://news.scnu.edu.cn/72690/1" target="_blank" rel="noopener noreferrer">华师新闻网 · 新工科大楼参访</a></li>
+      <li><a href="https://www.gdhzec.com/mobile/info_2507001.php?flv1id=85&amp;flv2id=84&amp;flv3id=94&amp;id=1438&amp;lvz=3" target="_blank" rel="noopener noreferrer">工科大楼建设项目资料</a></li>
+    </ul>
+  </dialog>
+  <script>
+  // CAMPUS_JS
+  </script>
+</body>
+</html>
