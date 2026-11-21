@@ -2,7 +2,8 @@ import { readFile, writeFile } from 'node:fs/promises';
 
 const readSource = (name) => readFile(new URL(`src/${name}`, import.meta.url), 'utf8');
 const [template, styles, ...scripts] = await Promise.all(
-  ['index.template.html', 'campus.css', 'campus.js', 'terrain.js', 'scene.js', 'viewer.js'].map(readSource)
+  ['index.template.html', 'campus.css', 'campus.js', 'terrain.js', 'elevation.js', 'scene.js',
+    'exploration-world.js', 'explorer-avatar.js', 'explorer.js', 'viewer.js'].map(readSource)
 );
 const page = template
   .replace('/* CAMPUS_CSS */', () => styles)

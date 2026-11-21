@@ -86,19 +86,26 @@ function within(x,z,points) {
   return inside;
 }
 
-function nearPath(x,z,path,width) {
+function pathDistanceSquared(x,z,path) {
+  let closest=Infinity;
   for (let i=1;i<path.length;i++) {
     const [a,b] = path[i-1], [c,d] = path[i];
     const dx=c-a, dz=d-b;
-    const t=Math.max(0,Math.min(1,((x-a)*dx+(z-b)*dz)/(dx*dx+dz*dz)));
-    if ((x-a-t*dx)**2+(z-b-t*dz)**2 < width**2) return true;
+    const length=dx*dx+dz*dz;
+    const t=length?Math.max(0,Math.min(1,((x-a)*dx+(z-b)*dz)/length)):0;
+    closest=Math.min(closest,(x-a-t*dx)**2+(z-b-t*dz)**2);
   }
-  return false;
+  return closest;
+}
+
+function nearPath(x,z,path,width) {
+  return pathDistanceSquared(x,z,path)<width**2;
 }
 
 const buildingFootprints = Object.values(buildingGroups).flatMap(group => group.map(([,p])=>p));
 function siteForTree(x,z) {
   return !water.some(p=>within(x,z,p)) && !buildingFootprints.some(p=>within(x,z,p)) &&
+    !outdoorSurfaces.some(surface=>within(x,z,surface.points)) &&
     !within(x,z,trackBoundary) && !within(x,z,plaza) && !within(x,z,parking) &&
     !courts.some(p=>within(x,z,p)) &&
     !campusRoads.some(([w,path])=>nearPath(x,z,path,w/2+5)) &&
@@ -203,7 +210,6 @@ function makeTerrain(trees) {
   for(const [w,p] of campusRoads) trace(ctx,p,'#bcb8a5',w+3.4);
   for(const [w,p] of campusRoads) trace(ctx,p,'#ece4d0',w);
   paint(ctx,plaza,'#dfd8c5','#c7bea6',2);
-  for(let z=680;z<900;z+=9) trace(ctx,[[1286,z],[1315,z]],'#c8c0ac',.7);
   paint(ctx,parking,'#c3c3b2','#b2b29d',1.4);
   for(let x=1595;x<1665;x+=8) trace(ctx,[[x,874],[x,886]],'#e7dfc8',.85);
   drawTrack(ctx);

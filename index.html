@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="华南师范大学佛山校区南海校园的交互式三维沙盘。">
-<title>南海校园 · 三维地图</title>
+<meta name="description" content="以第三人称自由探索华南师范大学佛山校区南海校园。">
+<title>南海校园 · 自由探索</title>
 <style>
 :root {
   color-scheme: light;
@@ -29,6 +29,8 @@ button:disabled {color:#818d83; cursor:default}
 .identity p {margin:4px 0 0; color:var(--muted); font-size:13px; letter-spacing:.06em}
 .source-button {margin-left:auto; align-self:center; border:1px solid #dbe3d7; background:#f3f6ee; border-radius:8px; padding:8px 13px; font-size:14px; font-weight:650; color:var(--deep); white-space:nowrap}
 .source-button:hover {background:#e8efe1}
+.return-button {border:1px solid #294f41; border-radius:8px; padding:8px 13px; color:#fbfcf3; background:#294f41; font-size:14px; font-weight:650; white-space:nowrap}
+.return-button:hover {background:#386653}
 main {display:grid; grid-template-columns:274px minmax(0,1fr); flex:1; min-height:0}
 main.sidebar-collapsed {grid-template-columns:minmax(0,1fr)}
 .sidebar {display:flex; min-height:0; flex-direction:column; background:var(--paper); border-right:1px solid #cbd5c8; z-index:2}
@@ -101,7 +103,7 @@ dialog a {color:#286246; font-size:14px}
   .brand-mark {width:36px;height:36px;font-size:20px}
   .identity h1 {font-size:17px}
   .identity p {font-size:11px}
-  .source-button {padding:6px 8px; font-size:12px}
+  .source-button,.return-button {padding:6px 8px; font-size:12px}
   main {grid-template-columns:minmax(0,1fr); grid-template-rows:minmax(0,1fr) clamp(140px,28dvh,245px)}
   main.sidebar-collapsed {grid-template-rows:minmax(0,1fr)}
   #map {grid-row:1}
@@ -125,9 +127,167 @@ dialog a {color:#286246; font-size:14px}
   #map-hint {font-size:11px}
 }
 
+.explore-ui {display:none}
+body[data-mode="explore"] .header,
+body[data-mode="explore"] .sidebar,
+body[data-mode="explore"] #map > :not(.scene,.explore-ui) {display:none}
+body[data-mode="explore"] main {display:block}
+body[data-mode="explore"] #map {
+  height:100%;
+  background:linear-gradient(180deg,#82b6ce 0%,#a5cbd9 31%,#c9e0e3 76%,#c9e0e3 100%);
+}
+body[data-mode="explore"] .scene {cursor:default; outline:0}
+body[data-mode="explore"] .scene.drag-look {cursor:grab}
+body[data-mode="explore"] .scene.drag-look:active {cursor:grabbing}
+body[data-mode="explore"] .explore-ui {
+  position:absolute;
+  display:block;
+  inset:0;
+  pointer-events:none;
+  color:#f6f7ef;
+  --game-panel:#142a29ed;
+  --game-border:#f0f5d338;
+  --game-accent:#e9f3b5;
+}
+.explore-ui button {pointer-events:auto}
+.explore-ui button:focus-visible {outline-color:var(--game-accent)}
+.explore-menu {
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  padding:clamp(22px,7.2vw,112px);
+  background:linear-gradient(90deg,#0d211ff0 0%,#122723d9 20%,#142a2373 43%,#142a2300 72%);
+}
+.explore-intro {width:max-content; max-width:100%; padding-bottom:4vh}
+.explore-school {
+  margin:0;
+  color:var(--game-accent);
+  font-size:clamp(13px,1.18vw,17px);
+  font-weight:650;
+  letter-spacing:.17em;
+}
+.explore-intro h1 {
+  margin:12px 0 32px;
+  font-size:clamp(46px,7.2vw,104px);
+  letter-spacing:.04em;
+  font-weight:850;
+  line-height:1.06;
+}
+.explore-actions {display:flex; flex-wrap:wrap; gap:10px}
+.explore-actions button {
+  min-height:50px;
+  padding:0 19px;
+  border-radius:7px;
+  border:1px solid var(--game-border);
+  font-weight:750;
+  font-size:15px;
+  white-space:nowrap;
+}
+.explore-actions .explore-start {
+  display:flex;
+  align-items:center;
+  gap:26px;
+  background:var(--game-accent);
+  color:#192b24;
+  border-color:var(--game-accent);
+}
+.explore-start:hover {background:#f2f8d1}
+.explore-start span[aria-hidden] {font-size:19px}
+.explore-map {background:#142a2999; color:#f6f7ef}
+.explore-map:hover,.hud-pause:hover {background:#26453fee}
+.explore-controls {
+  margin:24px 0 0;
+  padding:0;
+  list-style:none;
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px 17px;
+  color:#edf0e1;
+  font-size:13px;
+}
+.explore-controls li,.key-group,.hud-shortcuts span,.hud-pause {display:inline-flex; align-items:center; gap:6px}
+.key-group {gap:3px}
+.explore-ui kbd {
+  display:inline-grid;
+  place-items:center;
+  min-width:22px;
+  min-height:23px;
+  padding:1px 5px;
+  border:1px solid #f0f5d352;
+  border-radius:4px;
+  background:#e9f3b51a;
+  color:#f6f7ef;
+  font:600 12px/1 system-ui,sans-serif;
+}
+.explore-hud {position:absolute; inset:0}
+.explore-place,.hud-pause,.radar,.hud-shortcuts {
+  position:absolute;
+  border:1px solid var(--game-border);
+  background:var(--game-panel);
+  box-shadow:0 2px 16px #122a263b;
+}
+.explore-place {
+  top:22px;
+  left:24px;
+  display:grid;
+  gap:3px;
+  padding:10px 15px 11px;
+  border-radius:7px;
+  border-left:3px solid var(--game-accent);
+}
+.explore-place span {color:#c6d6bf; font-size:11px}
+.explore-place strong {font-size:17px; letter-spacing:.06em}
+.hud-pause {top:22px; right:24px; border-radius:7px; padding:7px 10px; font-size:13px}
+.radar {
+  bottom:24px;
+  left:24px;
+  width:144px;
+  aspect-ratio:1;
+  border:3px solid #233b34;
+  border-radius:17px;
+  overflow:hidden;
+}
+.radar canvas {display:block; width:100%; height:100%}
+.radar-north {
+  position:absolute;
+  inset:5px auto auto 50%;
+  transform:translateX(-50%);
+  padding:1px 5px 2px;
+  border-radius:4px;
+  background:#233b34;
+  color:#f3f6df;
+  font-size:11px;
+  font-weight:700;
+}
+.hud-shortcuts {bottom:24px; right:24px; display:grid; gap:5px; border-radius:7px; padding:6px 10px; font-size:12px}
+@media (max-width:600px) {
+  .explore-menu {
+    align-items:flex-end;
+    padding-bottom:clamp(20px,7vh,64px);
+    background:linear-gradient(0deg,#0d211ff5 0%,#122723de 27%,#142a2300 72%);
+  }
+  .explore-intro {padding-bottom:0}
+  .explore-intro h1 {margin-bottom:20px}
+  .explore-controls {margin-top:14px}
+  .explore-place,.radar {left:12px}
+  .hud-pause,.hud-shortcuts {right:12px}
+  .explore-place,.hud-pause {top:12px}
+  .radar,.hud-shortcuts {bottom:12px}
+  .radar {width:105px}
+}
+@media (max-height:400px) {
+  .explore-intro h1 {font-size:clamp(36px,14vh,58px); margin-bottom:15px}
+  .explore-intro {padding-bottom:0}
+  .explore-controls {margin-top:12px}
+}
+@media (max-width:380px) {
+  .header .brand-mark {display:none}
+}
+
 </style>
 </head>
-<body>
+<body data-mode="map">
   <header class="header">
     <span class="brand-mark" aria-hidden="true">华</span>
     <div class="identity">
@@ -135,6 +295,7 @@ dialog a {color:#286246; font-size:14px}
       <p>佛山校区 · 南海校园</p>
     </div>
     <button class="source-button" type="button" id="open-sources">资料与比例</button>
+    <button class="return-button" type="button" id="return-to-explore" hidden>返回探索</button>
   </header>
   <main id="campus-layout">
     <aside class="sidebar" id="sidebar" aria-labelledby="list-title">
@@ -146,8 +307,40 @@ dialog a {color:#286246; font-size:14px}
       <nav id="locations" aria-label="校园地标"></nav>
       <div class="side-footer">楼栋外观和高度为近似建模</div>
     </aside>
-    <section id="map" aria-label="南海校园三维沙盘">
-      <canvas class="scene" id="scene" aria-label="交互式校园模型">请用支持 Canvas 的浏览器打开。</canvas>
+    <section id="map" aria-label="南海校园三维场景">
+      <canvas class="scene" id="scene" tabindex="-1" aria-label="交互式校园模型">请用支持 Canvas 的浏览器打开。</canvas>
+      <div class="explore-ui">
+        <div class="explore-hud" id="explore-hud" hidden>
+          <div class="explore-place">
+            <span>当前位置</span>
+            <strong id="explore-location"></strong>
+          </div>
+          <button class="hud-pause" id="pause-explore" type="button"><kbd>Esc</kbd> 暂停</button>
+          <div class="radar">
+            <canvas id="explore-radar" width="272" height="272" aria-label="角色附近的校园地图"></canvas>
+            <span class="radar-north" aria-hidden="true">北</span>
+          </div>
+          <div class="hud-shortcuts">
+            <span id="drag-look-hint" hidden>按住左键环视</span>
+            <span><kbd>M</kbd> 校园地图</span>
+          </div>
+        </div>
+        <section class="explore-menu" id="explore-menu" aria-labelledby="explore-title">
+          <div class="explore-intro">
+            <p class="explore-school">华南师范大学佛山校区</p>
+            <h1 id="explore-title">南海校园</h1>
+            <div class="explore-actions">
+              <button class="explore-start" type="button" id="start-explore"><span>开始探索</span><span aria-hidden="true">↗</span></button>
+              <button class="explore-map" type="button" id="explore-map">校园地图</button>
+            </div>
+            <ul class="explore-controls" aria-label="操作方式">
+              <li><span class="key-group"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span>移动</li>
+              <li><kbd>鼠标</kbd>环视</li>
+              <li><kbd>Esc</kbd>暂停</li>
+            </ul>
+          </div>
+        </section>
+      </div>
       <div class="layer" id="labels"></div>
       <div class="view-bar">
         <button type="button" class="map-button sidebar-open" id="expand-sidebar" aria-controls="sidebar" aria-expanded="false" hidden>展开地标</button>
@@ -189,9 +382,10 @@ dialog a {color:#286246; font-size:14px}
     <form method="dialog"><button class="close-button" aria-label="关闭资料面板">×</button></form>
     <h2>资料与比例</h2>
     <p>以你提供的高德平面图描绘校园边界和建筑轮廓，参考倾斜视图估算楼高，用同位置的卫星图校对跑道、屋顶、植被和水系。田径场西侧的新工科大楼采用卫星图轮廓。</p>
-    <p>比例尺、楼高、立面和树木位置均为近似值，适合查看校园布局。</p>
+    <p>台阶、平台与道路的高差根据平面图和公开照片估算。比例尺、楼高、立面和树木位置也为近似值。</p>
     <ul>
       <li><a href="https://statics.scnu.edu.cn/pics/psy/2017/0615/1497490556137490.pdf" target="_blank" rel="noopener noreferrer">华南师范大学南海校区平面图</a></li>
+      <li><a href="https://statics.scnu.edu.cn/pics/cce/2020/0716/1594869714219806.pdf" target="_blank" rel="noopener noreferrer">华南师范大学开放学院招生简章 · 校园风景</a></li>
       <li><a href="https://lib.scnu.edu.cn/services/xinshengkongjian/guanshedaohang/2018/0109/88.html" target="_blank" rel="noopener noreferrer">南海校区图书馆馆舍导航</a></li>
       <li><a href="https://news.scnu.edu.cn/72690/1" target="_blank" rel="noopener noreferrer">华师新闻网 · 新工科大楼参访</a></li>
       <li><a href="https://www.gdhzec.com/mobile/info_2507001.php?flv1id=85&amp;flv2id=84&amp;flv3id=94&amp;id=1438&amp;lvz=3" target="_blank" rel="noopener noreferrer">工科大楼建设项目资料</a></li>
@@ -248,7 +442,7 @@ const campusRoads = [
   [8,[[1291,660],[1292,800],[1301,842],[1305,872],[1298,893],[1317,924],[1294,960],[1283,995]]],
   [12,[[1005,999],[1112,998],[1206,1001],[1252,1011],[1310,1004],[1321,1020],[1313,1047],[1288,1062],[1252,1062],[1221,1055],[1209,1046],[1202,1006]]],
   [10,[[1268,897],[1277,918],[1300,932],[1330,936],[1349,908]]],
-  [12,[[1200,1071],[1220,1059],[1262,1062],[1303,1060],[1328,1076],[1374,1136],[1440,1198],[1506,1269],[1540,1306]]],
+  [12,[[1200,1071],[1220,1059],[1262,1062],[1303,1060],[1328,1076],[1374,1136],[1368,1153]]],
   [10,[[1274,1220],[1282,1165],[1300,1120],[1330,1080],[1362,1064],[1398,1060],[1453,1073]]],
   [11,[[1489,955],[1539,951],[1628,955],[1728,944],[1827,918],[1888,902]]],
   [9,[[1411,808],[1476,804],[1498,817],[1517,836],[1546,851]]]
@@ -270,14 +464,16 @@ const zones = {
   north:{name:'北门',category:'校园出入口',color:'#66816a',anchor:[1550,264,0],desc:'从桃园东路进入校园，向南可到田径场与学生公寓区。'},
   dorm:{name:'学生公寓区',category:'生活区',color:'#ab7158',anchor:[1750,391,19],height:'约 15–22 米',desc:'校园东北部。按地图分别描出带内院的公寓楼群。'},
   dining:{name:'熹园食堂',category:'生活区',color:'#ab7158',anchor:[1614,733,12],height:'约 12 米',desc:'教学区与学生公寓区之间，南端的圆形轮廓按地图描绘。'},
-  academic:{name:'教学楼群',category:'教学科研',color:'#668c9e',anchor:[1291,665,19],height:'约 12–20 米',desc:'教学楼围绕中央庭院展开，保留 U 形主楼、两翼和中轴步道。'},
-  library:{name:'图书馆',category:'教学科研',color:'#668c9e',anchor:[1099,840,20],height:'约 20 米',desc:'教学楼群西南侧，校方馆舍资料列出地上五层。圆角翼楼和分段屋顶参考三张截图。'},
+  academic:{name:'教学楼群',category:'教学科研',color:'#668c9e',anchor:[1291,665,19],height:'约 12–20 米',desc:'教学楼围绕中央庭院展开。中轴台阶与侧边坡道都能通往上层广场。'},
+  library:{name:'图书馆',category:'教学科研',color:'#668c9e',anchor:[1099,840,20],height:'约 20 米',desc:'教学楼群西南侧，校方馆舍资料列出地上五层。可沿东侧台阶走上室外平台。'},
   info:{name:'信息中心',category:'教学科研',color:'#668c9e',anchor:[1448,813,15],height:'约 15 米',desc:'位于教学楼群东南侧，沿两侧翼楼向东连接圆角端部。'},
   business:{name:'国际商学院',category:'教学科研',color:'#ab7158',anchor:[1108,1055,17],height:'约 14–18 米',desc:'校园西南侧。模型保留平行楼翼、内院与南翼中部的凸出体量。'},
   rennes:{name:'雷恩数智商学院',category:'教学科研',color:'#ab7158',anchor:[1194,1210,13],height:'约 13 米',desc:'国际商学院南侧，靠近西南林地与通向东南门的步道。'},
-  southeast:{name:'东南门',category:'校园出入口',color:'#66816a',anchor:[1518,1286,2],desc:'东南方向的入口。跨水通道连接校园步道与校外道路。'}
+  southeast:{name:'东南门',category:'校园出入口',color:'#66816a',anchor:[1518,1286,0],desc:'东南方向的入口。跨水通道连接校园步道与校外道路。'}
 };
 
+const southeastBridge = [[1371,1148],[1554,1311],[1547,1320],[1365,1157]];
+const libraryTerrace = [[1038,782],[1091,779],[1094,803],[1159,803],[1179,811],[1185,830],[1175,850],[1175,891],[1104,898],[1087,910],[1061,908],[1044,896],[1037,875],[1049,852],[1049,839],[1023,839],[1025,801]];
 const buildingGroups = {
   engineering:[
     [35,[[977,238],[1113,236],[1116,342],[1077,342],[1076,279],[1020,279],[1020,341],[978,341]],'modern'],
@@ -301,8 +497,7 @@ const buildingGroups = {
   ],
   library:[
     [19,[[1031,788],[1091,785],[1093,807],[1157,807],[1172,815],[1176,834],[1167,847],[1168,887],[1101,893],[1086,900],[1065,898],[1050,888],[1047,876],[1051,861],[1059,853],[1059,833],[1029,833]],'blue'],
-    [14,[[1107,811],[1157,811],[1172,818],[1175,833],[1167,847],[1168,885],[1113,886]],'neutral'],
-    [2.2,[[1038,782],[1091,779],[1094,803],[1159,803],[1179,811],[1185,830],[1175,850],[1175,891],[1104,898],[1087,910],[1061,908],[1044,896],[1037,875],[1049,852],[1049,839],[1023,839],[1025,801]],'base']
+    [14,[[1107,811],[1157,811],[1172,818],[1175,833],[1167,847],[1168,885],[1113,886]],'neutral']
   ],
   info:[
     [15,[[1372,763],[1442,763],[1460,773],[1475,790],[1481,808],[1479,831],[1468,845],[1455,851],[1428,851],[1428,832],[1444,831],[1449,819],[1448,808],[1436,801],[1418,800],[1418,821],[1402,822],[1401,858],[1465,858],[1465,882],[1372,882],[1372,856],[1379,855],[1379,820],[1370,813],[1370,797],[1400,797],[1415,786],[1415,764]],'neutral'],
@@ -329,9 +524,6 @@ const buildingGroups = {
   ],
   rennes:[
     [13,[[1178,1212],[1186,1212],[1188,1164],[1197,1164],[1198,1204],[1230,1205],[1230,1257],[1207,1257],[1207,1276],[1180,1275]],'neutral']
-  ],
-  southeast:[
-    [2,[[1371,1148],[1554,1311],[1547,1320],[1365,1157]],'base']
   ]
 };
 
@@ -434,19 +626,26 @@ function within(x,z,points) {
   return inside;
 }
 
-function nearPath(x,z,path,width) {
+function pathDistanceSquared(x,z,path) {
+  let closest=Infinity;
   for (let i=1;i<path.length;i++) {
     const [a,b] = path[i-1], [c,d] = path[i];
     const dx=c-a, dz=d-b;
-    const t=Math.max(0,Math.min(1,((x-a)*dx+(z-b)*dz)/(dx*dx+dz*dz)));
-    if ((x-a-t*dx)**2+(z-b-t*dz)**2 < width**2) return true;
+    const length=dx*dx+dz*dz;
+    const t=length?Math.max(0,Math.min(1,((x-a)*dx+(z-b)*dz)/length)):0;
+    closest=Math.min(closest,(x-a-t*dx)**2+(z-b-t*dz)**2);
   }
-  return false;
+  return closest;
+}
+
+function nearPath(x,z,path,width) {
+  return pathDistanceSquared(x,z,path)<width**2;
 }
 
 const buildingFootprints = Object.values(buildingGroups).flatMap(group => group.map(([,p])=>p));
 function siteForTree(x,z) {
   return !water.some(p=>within(x,z,p)) && !buildingFootprints.some(p=>within(x,z,p)) &&
+    !outdoorSurfaces.some(surface=>within(x,z,surface.points)) &&
     !within(x,z,trackBoundary) && !within(x,z,plaza) && !within(x,z,parking) &&
     !courts.some(p=>within(x,z,p)) &&
     !campusRoads.some(([w,path])=>nearPath(x,z,path,w/2+5)) &&
@@ -551,7 +750,6 @@ function makeTerrain(trees) {
   for(const [w,p] of campusRoads) trace(ctx,p,'#bcb8a5',w+3.4);
   for(const [w,p] of campusRoads) trace(ctx,p,'#ece4d0',w);
   paint(ctx,plaza,'#dfd8c5','#c7bea6',2);
-  for(let z=680;z<900;z+=9) trace(ctx,[[1286,z],[1315,z]],'#c8c0ac',.7);
   paint(ctx,parking,'#c3c3b2','#b2b29d',1.4);
   for(let x=1595;x<1665;x+=8) trace(ctx,[[x,874],[x,886]],'#e7dfc8',.85);
   drawTrack(ctx);
@@ -584,6 +782,151 @@ function makeTerrain(trees) {
   ctx.drawImage(shade,0,0);
   ctx.restore();
   return canvas;
+}
+
+
+// Heights are approximate metres relative to the surrounding road and water level.
+const groundLevel=-.35;
+const academicLevel=1.82;
+const libraryLevel=1.83;
+const terrainGrades=[
+  {area:[974,230,158,316],rise:.75,feather:65},
+  {area:[1169,214,196,294],rise:1.55,feather:53},
+  {area:[1228,606,195,255],rise:.55,feather:46},
+  {area:[1005,757,188,153],rise:.38,feather:31},
+  {area:[1570,278,505,153],rise:1.04,feather:65},
+  {area:[1625,510,207,318],rise:.72,feather:56},
+  {area:[1860,551,69,179],rise:2.65,feather:66},
+  {area:[960,1296,160,144],rise:4.25,feather:78}
+];
+
+function groundGrid() {
+  const columns=Math.ceil(extent.width/10), rows=Math.ceil(extent.depth/10);
+  const stride=columns+1;
+  const dx=extent.width/columns, dz=extent.depth/rows;
+  const heights=new Float32Array(stride*(rows+1));
+  const shores=water.map(points=>{
+    const xs=points.map(([x])=>x), zs=points.map(([,z])=>z);
+    return {points,outline:[...points,points[0]],left:Math.min(...xs)-32,right:Math.max(...xs)+32,
+      top:Math.min(...zs)-32,bottom:Math.max(...zs)+32};
+  });
+  const smooth=t=>t*t*(3-2*t);
+  for(let row=0;row<=rows;row++) {
+    const z=extent.top+row*dz;
+    for(let column=0;column<=columns;column++) {
+      const x=extent.left+column*dx;
+      let rise=0;
+      for(const {area:[left,top,width,depth],rise:level,feather} of terrainGrades) {
+        const offX=Math.max(left-x,0,x-left-width), offZ=Math.max(top-z,0,z-top-depth);
+        const blend=1-Math.min(1,Math.hypot(offX,offZ)/feather);
+        rise=Math.max(rise,level*smooth(blend));
+      }
+      if(rise>0) {
+        for(const shore of shores) {
+          if(x<shore.left || x>shore.right || z<shore.top || z>shore.bottom) continue;
+          const distance=within(x,z,shore.points)?0:pathDistanceSquared(x,z,shore.outline);
+          rise*=smooth(Math.min(1,Math.sqrt(distance)/32));
+        }
+      }
+      heights[row*stride+column]=groundLevel+rise;
+    }
+  }
+  return {columns,rows,stride,dx,dz,heights};
+}
+
+const ground=groundGrid();
+
+function groundHeightAt(x,z) {
+  const {columns,rows,stride,dx,dz,heights}=ground;
+  const u=(x-extent.left)/dx, v=(z-extent.top)/dz;
+  if(u<0 || u>columns || v<0 || v>rows) return groundLevel;
+  const column=Math.min(Math.floor(u),columns-1), row=Math.min(Math.floor(v),rows-1);
+  const a=u-column, b=v-row, i=row*stride+column;
+  const nw=heights[i], se=heights[i+stride+1];
+  // Match the two triangles and their shared diagonal in the textured ground mesh.
+  return a>=b
+    ? nw*(1-a)+heights[i+1]*(a-b)+se*b
+    : nw*(1-b)+heights[i+stride]*(b-a)+se*a;
+}
+
+function outdoorSurface(points,height,material,base) {
+  const xs=points.map(([x])=>x), zs=points.map(([,z])=>z);
+  return {points,height,material,base,left:Math.min(...xs),right:Math.max(...xs),
+    top:Math.min(...zs),bottom:Math.max(...zs)};
+}
+
+const terrace=(points,height,material='stone')=>outdoorSurface(points,()=>height,material);
+const mixBank=(from,to,t)=>from.map(([x,z],i)=>[x+(to[i][0]-x)*t,z+(to[i][1]-z)*t]);
+
+function ramp(from,to,low,high,material='ramp') {
+  const [a,b]=from, [d,c]=to;
+  const points=[a,b,c,d];
+  if(low===high) return terrace(points,low,material);
+  const side=([ax,az],[bx,bz],[x,z])=>(bx-ax)*(z-az)-(bz-az)*(x-ax);
+  const diagonalSide=side(a,c,b);
+  const fromSide=side(a,b,c), toSide=side(d,c,a);
+  return outdoorSurface(points,(x,z)=>{
+    const point=[x,z];
+    const progress=side(a,c,point)*diagonalSide>=0
+      ? side(a,b,point)/fromSide
+      : 1-side(d,c,point)/toSide;
+    return low+(high-low)*progress;
+  },material);
+}
+
+function stairs(from,to,low,high,count) {
+  return Array.from({length:count},(_,i)=>{
+    const front=mixBank(from,to,i/count), back=mixBank(from,to,(i+1)/count);
+    return terrace([...front,back[1],back[0]],low+(high-low)*(i+1)/count,'step');
+  });
+}
+
+const [bridgeStart,bridgeEnd,bridgeEndRight,bridgeStartRight]=southeastBridge;
+const nearBank=[bridgeStart,bridgeStartRight], farBank=[bridgeEnd,bridgeEndRight];
+const deckStart=mixBank(nearBank,farBank,.17), deckEnd=mixBank(nearBank,farBank,.83);
+const bridgeSurfaces=[
+  ramp(nearBank,deckStart,groundLevel,1.12,'bridge'),
+  ramp(deckStart,deckEnd,1.12,1.12,'bridge'),
+  ramp(deckEnd,farBank,1.12,groundLevel,'bridge')
+];
+const bridgeParapets=bridgeSurfaces.flatMap(({points:[a,b,c,d],height})=>{
+  const roof=(x,z)=>height(x,z)+.90;
+  const [inA,inD]=mixBank([a,d],[b,c],.045);
+  const [inB,inC]=mixBank([b,c],[a,d],.045);
+  return [outdoorSurface([a,inA,inD,d],roof,'parapet',height),
+    outdoorSurface([inB,b,c,inC],roof,'parapet',height)];
+});
+const outdoorSurfaces=[
+  terrace(rect(1262,649,65,119),academicLevel),
+  ...stairs([[1262,776],[1320,776]],[[1262,768],[1320,768]],.20,academicLevel,9),
+  ramp([[1320,806],[1327,806]],[[1320,768],[1327,768]],.20,academicLevel),
+  terrace(libraryTerrace,libraryLevel),
+  ...stairs([[1186,854],[1186,880]],[[1175,854],[1175,880]],.03,libraryLevel,10),
+  ...bridgeSurfaces
+];
+
+function surfaceHeightAt(x,z) {
+  let elevation=groundHeightAt(x,z);
+  for(const surface of outdoorSurfaces) {
+    if(x<surface.left || x>surface.right || z<surface.top || z>surface.bottom) continue;
+    if(within(x,z,surface.points)) elevation=Math.max(elevation,surface.height(x,z));
+  }
+  return elevation;
+}
+
+function buildingBase(id,points,index) {
+  if(id==='academic' && index<4) return academicLevel;
+  if(id==='library') return libraryLevel;
+  const x=points.reduce((sum,p)=>sum+p[0],0)/points.length;
+  const z=points.reduce((sum,p)=>sum+p[1],0)/points.length;
+  return groundHeightAt(x,z);
+}
+
+function placeAnchor(id) {
+  const [x,z,height=0]=zones[id].anchor;
+  const building=buildingGroups[id]?.[0];
+  const base=building && height?buildingBase(id,building[1],0):surfaceHeightAt(x,z);
+  return toWorld([x,z,base+height]);
 }
 
 
@@ -648,22 +991,24 @@ class Mesh {
   }
 }
 
-function addBuilding(mesh,height,points,style) {
+function addBuilding(mesh,height,points,style,base) {
   const [roof,wall,glass]=colors[style].map(rgb);
   const trim=tint(roof,.96);
   const winding=area(points)>0?1:-1;
-  mesh.flat(points,height,roof);
+  mesh.flat(points,base+height,roof);
   points.forEach(([ax,az],i)=>{
     const [bx,bz]=points[(i+1)%points.length];
     const dx=bx-ax, dz=bz-az, length=Math.hypot(dx,dz);
     if(length<.001) return;
     const nx=winding*dz/length, nz=-winding*dx/length;
     const light=.87+.17*(-.68*nx-.73*nz);
-    const point=(u,v,push=0)=>toWorld([ax+dx*u+nx*push,az+dz*u+nz*push,v]);
+    const point=(u,v,push=0)=>toWorld([ax+dx*u+nx*push,az+dz*u+nz*push,base+v]);
     const band=(u0,u1,v0,v1,push,color)=>{
       mesh.quad(point(u0,v0,push),point(u1,v0,push),point(u1,v1,push),point(u0,v1,push),color);
     };
+    band(0,1,groundLevel-base-.05,0,0,tint(trim,light*.79));
     band(0,1,0,height,0,tint(wall,light));
+    band(0,1,0,.38,.04,tint(trim,light*.82));
     band(0,1,height-Math.min(.8,height*.17),height,.07,tint(trim,light));
     if(height<6 || length<13) return;
     const floors=Math.max(1,Math.round(height/(style==='modern'?4.1:3.7)));
@@ -678,7 +1023,10 @@ function addBuilding(mesh,height,points,style) {
       const top=bottom+spacing*(style==='modern'?.44:.38);
       for(let k=0;k<bays;k++) {
         const gap=style==='modern'?.1:.22;
-        band((k+gap)/bays,(k+1-gap)/bays,bottom,top,.12,tint(glass,light*(.95+(k%5===0?.12:0))));
+        const start=(k+gap)/bays, end=(k+1-gap)/bays;
+        band(start,end,bottom,top,.12,tint(glass,light*(.95+(k%5===0?.12:0))));
+        band(start,end,top-.12,top,.15,tint(glass,light*1.16));
+        band(start,end,bottom-.055,bottom,.16,tint(trim,light*.94));
       }
     }
   });
@@ -686,9 +1034,10 @@ function addBuilding(mesh,height,points,style) {
 
 function addGymRoof(mesh) {
   const rows=[];
+  const roofBase=12+buildingBase('gym',buildingGroups.gym[0][1],0);
   for (let i=0;i<=10;i++) {
     const t=i/10;
-    const h=12+3.2*Math.sin(t*Math.PI);
+    const h=roofBase+3.2*Math.sin(t*Math.PI);
     rows.push([toWorld([1397+89*t,332-t,h]),toWorld([1399+92*t,458-4*t,h])]);
   }
   const color=rgb('#aebbc1');
@@ -696,17 +1045,17 @@ function addGymRoof(mesh) {
   for (let i=1;i<rows.length;i++) {
     const [a,b]=rows[i-1], [c,d]=rows[i];
     mesh.quad(a,c,d,b,tint(color,.87+.14*Math.sin(i*.25)));
-    mesh.triangle(a,c,[c[0],12,c[2]],edge);
-    mesh.triangle(a,[c[0],12,c[2]],[a[0],12,a[2]],edge);
-    mesh.triangle(b,d,[d[0],12,d[2]],edge);
-    mesh.triangle(b,[d[0],12,d[2]],[b[0],12,b[2]],edge);
+    mesh.triangle(a,c,[c[0],roofBase,c[2]],edge);
+    mesh.triangle(a,[c[0],roofBase,c[2]],[a[0],roofBase,a[2]],edge);
+    mesh.triangle(b,d,[d[0],roofBase,d[2]],edge);
+    mesh.triangle(b,[d[0],roofBase,d[2]],[b[0],roofBase,b[2]],edge);
   }
 }
 
 function addTree(mesh,{x,z,size,yaw,color}) {
   const leaf=rgb(color);
   const trunk=rgb('#867c62');
-  const base=toWorld([x,z,0]);
+  const base=toWorld([x,z,surfaceHeightAt(x,z)]);
   const point=(x,y,z)=>[base[0]+x*size,base[1]+y*size,base[2]+z*size];
   mesh.quad(point(-.065,0,0),point(.065,0,0),point(.052,.72,0),point(-.052,.72,0),trunk);
   mesh.quad(point(0,0,-.065),point(0,0,.065),point(0,.72,.052),point(0,.72,-.052),trunk);
@@ -725,14 +1074,71 @@ function addTree(mesh,{x,z,size,yaw,color}) {
   }
 }
 
+const surfaceColors={
+  stone:['#dad3bf','#a29a84'],
+  step:['#d8ceba','#a59c87'],
+  ramp:['#c8c4b2','#a09b88'],
+  bridge:['#d6d1bf','#aaa594'],
+  parapet:['#d9d9ca','#a8a99a']
+};
+
+function addOutdoorSurface(mesh,{points,height,material,base=()=>groundLevel-.06}) {
+  const [top,wall]=surfaceColors[material].map(rgb);
+  const corners=points.map(([x,z])=>toWorld([x,z,height(x,z)]));
+  const bottom=points.map(([x,z])=>toWorld([x,z,base(x,z)]));
+  if(points.length===4) mesh.quad(...corners,top);
+  else for(const [a,b,c] of triangulate(points)) mesh.triangle(corners[a],corners[b],corners[c],top);
+  for(let i=0;i<corners.length;i++) {
+    const next=(i+1)%corners.length;
+    const a=corners[i], b=corners[next];
+    const lighting=Math.abs(b[0]-a[0])>=Math.abs(b[2]-a[2])?.95:.86;
+    mesh.quad(a,b,bottom[next],bottom[i],tint(wall,lighting));
+  }
+  if(material==='step') {
+    const [left,right,backRight,backLeft]=corners;
+    const strip=(a,b)=>[a[0]+(b[0]-a[0])*.16,a[1]+.006,a[2]+(b[2]-a[2])*.16];
+    mesh.quad(strip(left,left),strip(right,right),strip(right,backRight),strip(left,backLeft),tint(top,1.055));
+  }
+}
+
 function sceneMesh(trees) {
   const mesh=new Mesh();
-  for(const buildings of Object.values(buildingGroups)) {
-    for(const [height,points,style='modern'] of buildings) addBuilding(mesh,height,points,style);
+  for(const [id,buildings] of Object.entries(buildingGroups)) {
+    buildings.forEach(([height,points,style='modern'],i)=>
+      addBuilding(mesh,height,points,style,buildingBase(id,points,i)));
   }
+  for(const surface of outdoorSurfaces) addOutdoorSurface(mesh,surface);
+  for(const wall of bridgeParapets) addOutdoorSurface(mesh,wall);
   addGymRoof(mesh);
   for(const tree of trees) addTree(mesh,tree);
   return mesh;
+}
+
+function terrainVertices() {
+  const {columns,rows,stride,dx,dz,heights}=ground;
+  const points=new Float32Array(heights.length*6);
+  for(let row=0;row<=rows;row++) {
+    for(let column=0;column<=columns;column++) {
+      const i=row*stride+column;
+      const position=toWorld([extent.left+column*dx,extent.top+row*dz,heights[i]]);
+      const left=heights[i-(column>0?1:0)], right=heights[i+(column<columns?1:0)];
+      const north=heights[i-(row>0?stride:0)], south=heights[i+(row<rows?stride:0)];
+      const shade=1+Math.max(-.17,Math.min(.12,(right-left+south-north)*.15));
+      points.set([...position,column/columns,row/rows,shade],i*6);
+    }
+  }
+  const vertices=new Float32Array(columns*rows*36);
+  let offset=0;
+  for(let row=0;row<rows;row++) {
+    for(let column=0;column<columns;column++) {
+      const nw=row*stride+column, sw=nw+stride;
+      for(const id of [nw,nw+1,sw+1,nw,sw+1,sw]) {
+        vertices.set(points.subarray(id*6,id*6+6),offset);
+        offset+=6;
+      }
+    }
+  }
+  return vertices;
 }
 
 function viewAxes(yaw,tilt) {
@@ -752,22 +1158,63 @@ function viewMatrix(view,aspect) {
   ]);
 }
 
+function perspectiveView({yaw,tilt,eye},aspect) {
+  const {right,up,back}=viewAxes(yaw,tilt);
+  const scale=1/Math.tan(34*Math.PI/180);
+  const near=.06, far=1200;
+  const depth=(far+near)/(near-far), offset=2*far*near/(near-far);
+  return new Float32Array([
+    right[0]*scale/aspect, up[0]*scale, back[0]*depth, -back[0],
+    right[1]*scale/aspect, up[1]*scale, back[1]*depth, -back[1],
+    right[2]*scale/aspect, up[2]*scale, back[2]*depth, -back[2],
+    -dot(right,eye)*scale/aspect, -dot(up,eye)*scale, -dot(back,eye)*depth+offset, dot(back,eye)
+  ]);
+}
+
 function renderer(canvas,terrain,mesh) {
-  const gl=canvas.getContext('webgl',{alpha:false,antialias:true});
+  const gl=canvas.getContext('webgl',{alpha:true,antialias:true});
   if(!gl) return null;
   const vertex=`
     attribute vec3 aPosition;
     attribute vec3 aData;
     uniform mat4 uView;
     varying vec3 vData;
-    void main() { gl_Position = uView * vec4(aPosition, 1.0); vData = aData; }
+    varying vec3 vPosition;
+    void main() {
+      gl_Position = uView * vec4(aPosition, 1.0);
+      vData = aData;
+      vPosition = aPosition;
+    }
   `;
   const fragment=`
+    #ifdef GL_FRAGMENT_PRECISION_HIGH
+    precision highp float;
+    #else
     precision mediump float;
+    #endif
     varying vec3 vData;
+    varying vec3 vPosition;
     uniform sampler2D uMap;
-    uniform bool uTerrain;
-    void main() { gl_FragColor = uTerrain ? texture2D(uMap, vData.xy) : vec4(vData, 1.0); }
+    uniform bool uExplore;
+    uniform int uSurface;
+    uniform vec3 uEye;
+    void main() {
+      if (uSurface == 2) {
+        gl_FragColor = vec4(0.0, 0.0, 0.0, vData.r);
+        return;
+      }
+      vec3 color = uSurface == 1 ? texture2D(uMap, vData.xy).rgb * vData.z : vData;
+      if (uExplore) {
+        float distanceFromEye = length((vPosition - uEye) * 0.001) * 1000.0;
+        if (uSurface == 1) {
+          vec2 tile = mod(floor(vPosition.xz * 24.0), 121.0);
+          float grain = fract(sin(dot(tile, vec2(11.7, 53.3))) * 49.1) - 0.5;
+          color += grain * 0.027 * (1.0 - smoothstep(7.0, 22.0, distanceFromEye));
+        }
+        color = mix(color, vec3(0.79, 0.88, 0.89), smoothstep(100.0, 520.0, distanceFromEye));
+      }
+      gl_FragColor = vec4(color, 1.0);
+    }
   `;
   function shader(type,code) {
     const shader=gl.createShader(type);
@@ -785,24 +1232,25 @@ function renderer(canvas,terrain,mesh) {
   const position=gl.getAttribLocation(program,'aPosition');
   const data=gl.getAttribLocation(program,'aData');
   const uView=gl.getUniformLocation(program,'uView');
-  const uTerrain=gl.getUniformLocation(program,'uTerrain');
+  const uExplore=gl.getUniformLocation(program,'uExplore');
+  const uSurface=gl.getUniformLocation(program,'uSurface');
+  const uEye=gl.getUniformLocation(program,'uEye');
   gl.enableVertexAttribArray(position);
   gl.enableVertexAttribArray(data);
   gl.enable(gl.DEPTH_TEST);
   gl.depthFunc(gl.LEQUAL);
-  gl.clearColor(.838,.866,.780,1);
-  const [tl,tr,br,bl]=rect(extent.left,extent.top,extent.width,extent.depth).map(p=>toWorld([...p,-.35]));
-  const base=[
-    ...tl,0,0,0,...tr,1,0,0,...br,1,1,0,
-    ...tl,0,0,0,...br,1,1,0,...bl,0,1,0
-  ];
   function buffer(values) {
     const id=gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER,id);
-    gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(values),gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER,values instanceof Float32Array?values:new Float32Array(values),gl.STATIC_DRAW);
     return {id,count:values.length/6};
   }
-  const ground=buffer(base), structures=buffer(mesh.vertices);
+  const horizon=new Mesh();
+  const horizonLevel=groundLevel-.13;
+  horizon.quad([-1800,horizonLevel,-1800],[1800,horizonLevel,-1800],
+    [1800,horizonLevel,1800],[-1800,horizonLevel,1800],rgb('#bdc7aa'));
+  const terrainMesh=buffer(terrainVertices()), structures=buffer(mesh.vertices), distantGround=buffer(horizon.vertices);
+  const movingMesh={id:gl.createBuffer(),count:0};
   const texture=gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D,texture);
   gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,terrain);
@@ -812,20 +1260,465 @@ function renderer(canvas,terrain,mesh) {
   const anisotropy=gl.getExtension('EXT_texture_filter_anisotropic');
   if(anisotropy) gl.texParameterf(gl.TEXTURE_2D,anisotropy.TEXTURE_MAX_ANISOTROPY_EXT,
     Math.min(8,gl.getParameter(anisotropy.MAX_TEXTURE_MAX_ANISOTROPY_EXT)));
-  function draw({id,count},isGround) {
+  function draw({id,count},surface=0) {
     gl.bindBuffer(gl.ARRAY_BUFFER,id);
     gl.vertexAttribPointer(position,3,gl.FLOAT,false,24,0);
     gl.vertexAttribPointer(data,3,gl.FLOAT,false,24,12);
-    gl.uniform1i(uTerrain,isGround);
+    gl.uniform1i(uSurface,surface);
     gl.drawArrays(gl.TRIANGLES,0,count);
   }
-  return matrix=>{
+  function drawMoving(vertices,surface) {
+    gl.bindBuffer(gl.ARRAY_BUFFER,movingMesh.id);
+    gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(vertices),gl.DYNAMIC_DRAW);
+    movingMesh.count=vertices.length/6;
+    draw(movingMesh,surface);
+  }
+  return (matrix,explorer)=>{
     gl.viewport(0,0,canvas.width,canvas.height);
+    if(explorer) gl.clearColor(0,0,0,0);
+    else gl.clearColor(.838,.866,.780,1);
     gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
     gl.uniformMatrix4fv(uView,false,matrix);
-    draw(ground,1);
-    draw(structures,0);
+    gl.uniform1i(uExplore,Boolean(explorer));
+    if(explorer) {
+      gl.uniform3fv(uEye,explorer.eye);
+      draw(distantGround);
+    }
+    draw(terrainMesh,1);
+    draw(structures);
+    if(explorer) {
+      gl.enable(gl.BLEND);
+      gl.blendFuncSeparate(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA,gl.ONE,gl.ONE_MINUS_SRC_ALPHA);
+      gl.depthMask(false);
+      drawMoving(explorer.shadow,2);
+      gl.depthMask(true);
+      gl.disable(gl.BLEND);
+      if(explorer.avatar) drawMoving(explorer.avatar,0);
+    }
   };
+}
+
+
+const explorerRadius = .36;
+const explorerSpeed = 9;
+const clamp = (value,min,max) => Math.max(min,Math.min(max,value));
+
+function footprint(points,height=0) {
+  const polygon=points.map(point=>{
+    const [x,,z]=toWorld(point);
+    return [x,z];
+  });
+  const xs=polygon.map(([x])=>x), zs=polygon.map(([,z])=>z);
+  return {polygon,height,minX:Math.min(...xs),maxX:Math.max(...xs),
+    minZ:Math.min(...zs),maxZ:Math.max(...zs)};
+}
+
+function overlapsFootprint(x,z,radius,shape) {
+  const {polygon,minX,maxX,minZ,maxZ}=shape;
+  if(x<minX-radius || x>maxX+radius || z<minZ-radius || z>maxZ+radius) return false;
+  if(within(x,z,polygon)) return true;
+  const limit=radius**2;
+  for(let i=0,j=polygon.length-1;i<polygon.length;j=i++) {
+    const [a,b]=polygon[j], [c,d]=polygon[i];
+    const dx=c-a, dz=d-b, length=dx*dx+dz*dz;
+    const t=length?clamp(((x-a)*dx+(z-b)*dz)/length,0,1):0;
+    if((x-a-t*dx)**2+(z-b-t*dz)**2<limit) return true;
+  }
+  return false;
+}
+
+function explorationWorld(trees) {
+  const solidWalls=Object.entries(buildingGroups).flatMap(([id,group])=>
+    group.map(([height,points],i)=>footprint(points,buildingBase(id,points,i)+height)));
+  for(const {points,height} of bridgeParapets) {
+    solidWalls.push(footprint(points,Math.max(...points.map(([x,z])=>height(x,z)))));
+  }
+  const ponds=water.map(points=>footprint(points));
+  const bounds=footprint(rect(extent.left,extent.top,extent.width,extent.depth));
+  const treeTrunks=trees.map(({x,z,size})=>{
+    const [worldX,,worldZ]=toWorld([x,z]);
+    return {x:worldX,z:worldZ,radius:size*.065};
+  });
+  const bridges=[...campusRoads,...surroundingRoads];
+
+  function surfaceElevation(x,z) {
+    return surfaceHeightAt(...toMap([x,0,z]));
+  }
+
+  function canStand(x,z) {
+    if(x<bounds.minX+explorerRadius || x>bounds.maxX-explorerRadius ||
+      z<bounds.minZ+explorerRadius || z>bounds.maxZ-explorerRadius) return false;
+    if(solidWalls.some(shape=>overlapsFootprint(x,z,explorerRadius,shape))) return false;
+    for(const trunk of treeTrunks) {
+      const radius=trunk.radius+explorerRadius;
+      if(Math.abs(x-trunk.x)<radius && (x-trunk.x)**2+(z-trunk.z)**2<radius**2) return false;
+    }
+    if(!ponds.some(shape=>overlapsFootprint(x,z,explorerRadius,shape))) return true;
+    const [mx,mz]=toMap([x,0,z]);
+    // Roads and the southeast crossing are drawn over the water where they span it.
+    return within(mx,mz,southeastBridge) ||
+      bridges.some(([width,path])=>nearPath(mx,mz,path,width/2-explorerRadius/metresPerPixel));
+  }
+
+  function move(player,dx,dz) {
+    const startX=player.x, startZ=player.z;
+    // Keep each step shorter than the collider radius so thin walls cannot be skipped.
+    const steps=Math.max(1,Math.ceil(Math.hypot(dx,dz)/.14));
+    const sx=dx/steps, sz=dz/steps;
+    player.y=surfaceElevation(startX,startZ);
+    function stepTo(x,z) {
+      if(!canStand(x,z)) return false;
+      const y=surfaceElevation(x,z);
+      // A riser is walkable. Taller terrace edges act as retaining walls.
+      if(Math.abs(y-player.y)>.25) return false;
+      Object.assign(player,{x,y,z});
+      return true;
+    }
+    for(let i=0;i<steps;i++) {
+      const x=player.x+sx, z=player.z+sz;
+      if(stepTo(x,z)) continue;
+      // Allow the free component of a diagonal input to slide alongside a wall.
+      if(sx) stepTo(x,player.z);
+      if(sz) stepTo(player.x,z);
+    }
+    return Math.hypot(player.x-startX,player.z-startZ);
+  }
+
+  function cameraClearance(anchor,offset) {
+    const distance=Math.hypot(...offset);
+    const steps=Math.ceil(distance/.10);
+    for(let i=1;i<=steps;i++) {
+      const t=i/steps;
+      const x=anchor[0]+offset[0]*t;
+      const y=anchor[1]+offset[1]*t;
+      const z=anchor[2]+offset[2]*t;
+      if(y<=surfaceElevation(x,z)+.15 ||
+        solidWalls.some(shape=>y<=shape.height+.14 && overlapsFootprint(x,z,.19,shape))) {
+        return (i-1)/steps;
+      }
+    }
+    return 1;
+  }
+
+  return {canStand,move,cameraClearance,surfaceElevation};
+}
+
+
+const avatarColors = {
+  jacket:rgb('#28645f'),
+  collar:rgb('#91b5a2'),
+  pants:rgb('#2f3b46'),
+  shoes:rgb('#e7ddc7'),
+  soles:rgb('#545453'),
+  skin:rgb('#c98e68'),
+  hair:rgb('#2a2528'),
+  backpack:rgb('#b96136'),
+  pocket:rgb('#d68448'),
+  straps:rgb('#54423c'),
+  zipper:rgb('#f1c68c')
+};
+
+function avatarPart(mesh,transform,color,[x,y,z],[w,h,d]) {
+  const cut=Math.min(w,d)*.16;
+  const left=x-w/2, right=x+w/2, front=z-d/2, back=z+d/2;
+  const corners=[
+    [left+cut,front],[right-cut,front],[right,front+cut],[right,back-cut],
+    [right-cut,back],[left+cut,back],[left,back-cut],[left,front+cut]
+  ];
+  const low=corners.map(([a,b])=>transform(a,y-h/2,b));
+  const high=corners.map(([a,b])=>transform(a,y+h/2,b));
+  const shade=[.98,1,.83,.80,.91,.96,.91,1.04];
+  for(let i=0;i<8;i++) {
+    const next=(i+1)%8;
+    mesh.quad(low[i],low[next],high[next],high[i],tint(color,shade[i]));
+  }
+  const top=tint(color,1.18);
+  for(let i=1;i<7;i++) mesh.triangle(high[0],high[i],high[i+1],top);
+}
+
+function explorerAvatar({x,y,z,facing,phase,gait}) {
+  const mesh=new Mesh();
+  const cos=Math.cos(facing), sin=Math.sin(facing);
+  const sway=.023*Math.sin(phase)*gait;
+  const lift=.025*Math.abs(Math.sin(phase))*gait;
+  const toScene=(a,b,c)=>[x+a*cos+c*sin,y+b,-a*sin+z+c*cos];
+  const body=(a,b,c)=>toScene(a+sway,b+lift,c);
+  const part=(transform,color,center,size)=>avatarPart(mesh,transform,avatarColors[color],center,size);
+  part(body,'jacket',[0,1.17,0],[.43,.47,.26]);
+  part(body,'pants',[0,.91,0],[.33,.14,.23]);
+  part(body,'collar',[0,1.40,0],[.22,.105,.23]);
+  part(body,'skin',[0,1.49,-.005],[.13,.14,.14]);
+  part(body,'skin',[0,1.62,-.02],[.225,.25,.22]);
+  part(body,'hair',[0,1.72,-.005],[.24,.11,.25]);
+  part(body,'hair',[0,1.63,.075],[.23,.13,.088]);
+  part(body,'backpack',[0,1.18,.193],[.314,.40,.176]);
+  part(body,'straps',[0,1.394,.17],[.105,.044,.038]);
+  part(body,'pocket',[0,1.108,.281],[.237,.174,.066]);
+  part(body,'zipper',[0,1.158,.317],[.157,.016,.009]);
+  part(body,'straps',[0,1.285,.283],[.117,.035,.009]);
+
+  for(const sign of [-1,1]) {
+    const stride=sign*Math.sin(phase)*gait;
+    const legAngle=.60*stride;
+    const leg=(a,b,c)=>toScene(a+sign*.087+sway,b*Math.cos(legAngle)-c*Math.sin(legAngle)+.91+lift,
+      b*Math.sin(legAngle)+c*Math.cos(legAngle));
+    const kneeAngle=-.78*Math.max(0,-stride);
+    const shin=(a,b,c)=>leg(a,b*Math.cos(kneeAngle)-c*Math.sin(kneeAngle)-.42,
+      b*Math.sin(kneeAngle)+c*Math.cos(kneeAngle));
+    part(leg,'pants',[0,-.205,0],[.156,.45,.184]);
+    part(shin,'pants',[0,-.190,0],[.128,.43,.15]);
+    part(shin,'shoes',[0,-.415,-.044],[.15,.108,.263]);
+    part(shin,'soles',[0,-.473,-.044],[.153,.030,.267]);
+
+    const armAngle=-.63*stride-.09;
+    const arm=(a,b,c)=>body(a+sign*.253,b*Math.cos(armAngle)-c*Math.sin(armAngle)+1.37,
+      b*Math.sin(armAngle)+c*Math.cos(armAngle));
+    part(arm,'jacket',[0,-.187,0],[.128,.42,.152]);
+    part(arm,'collar',[0,-.392,0],[.110,.048,.131]);
+    part(arm,'skin',[0,-.448,-.008],[.093,.105,.104]);
+    part(body,'straps',[sign*.14,1.25,-.137],[.037,.32,.025]);
+  }
+  return mesh.vertices;
+}
+
+function explorerShadow({x,y,z},surfaceElevation) {
+  const shadowY=y+.018, vertices=[];
+  const opacity=[.34,0,0], edge=[0,0,0];
+  const count=18;
+  const perimeter=Array.from({length:count},(_,i)=>{
+    const angle=i*2*Math.PI/count;
+    const px=x+Math.cos(angle)*.78, pz=z+Math.sin(angle)*.64;
+    return [px,surfaceElevation(px,pz)+.018,pz];
+  });
+  for(let i=0;i<count;i++) {
+    vertices.push(x,shadowY,z,...opacity,...perimeter[i],...edge,...perimeter[(i+1)%count],...edge);
+  }
+  return vertices;
+}
+
+
+function createExplorer({canvas,trees,render,drawFlatMap,schedule,openMap}) {
+  const world=explorationWorld(trees);
+  const [x,,z]=toWorld([1517,1000]);
+  const y=world.surfaceElevation(x,z);
+  const camera={yaw:-.14,tilt:.16,fraction:1,ground:y};
+  const player={x,y,z,facing:camera.yaw,phase:0,gait:0};
+  const movementKeys=new Set(['KeyW','KeyA','KeyS','KeyD']);
+  const pressed=new Set();
+  let active=true, started=false, pendingLock=false, control='paused';
+  let lastFrame=null, drag=null;
+
+  const menu=$('explore-menu'), hud=$('explore-hud'), start=$('start-explore');
+  const radar=$('explore-radar');
+  const radarContext=radar.getContext('2d');
+  const chart=document.createElement('canvas');
+  const chartScale=.5;
+  chart.width=extent.width*chartScale;
+  chart.height=extent.depth*chartScale;
+  const chartContext=chart.getContext('2d');
+  chartContext.scale(chartScale,chartScale);
+  chartContext.translate(-extent.left,-extent.top);
+  drawFlatMap(chartContext);
+  const landmarks=Object.values(zones).map(({name,anchor})=>({name,point:toWorld(anchor)}));
+
+  function drawRadar() {
+    const [mx,mz]=toMap([player.x,0,player.z]);
+    const reach=57/metresPerPixel*chartScale;
+    const cx=(mx-extent.left)*chartScale, cz=(mz-extent.top)*chartScale;
+    const ctx=radarContext;
+    ctx.fillStyle='#41534a';
+    ctx.fillRect(0,0,radar.width,radar.height);
+    ctx.drawImage(chart,cx-reach,cz-reach,reach*2,reach*2,0,0,radar.width,radar.height);
+    ctx.save();
+    ctx.translate(radar.width/2,radar.height/2);
+    ctx.save();
+    ctx.rotate(-camera.yaw);
+    ctx.fillStyle='#24443757';
+    ctx.beginPath();
+    ctx.moveTo(0,0);
+    ctx.arc(0,0,70,-Math.PI/2-.65,-Math.PI/2+.65);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+    ctx.rotate(-player.facing);
+    paint(ctx,[[0,-14],[10,9],[0,5],[-10,9]],'#e9f3b5','#20352a',3);
+    ctx.restore();
+  }
+
+  function updatePlace() {
+    let name='南海校园', closest=72**2;
+    for(const landmark of landmarks) {
+      const distance=(player.x-landmark.point[0])**2+(player.z-landmark.point[2])**2;
+      if(distance<closest) {
+        name=landmark.name;
+        closest=distance;
+      }
+    }
+    const location=$('explore-location');
+    if(location.textContent!==name) location.textContent=name;
+  }
+
+  function advance(dt) {
+    const forward=Number(pressed.has('KeyW'))-Number(pressed.has('KeyS'));
+    const strafe=Number(pressed.has('KeyD'))-Number(pressed.has('KeyA'));
+    const length=Math.hypot(forward,strafe);
+    let pace=0;
+    if(length && dt) {
+      const sin=Math.sin(camera.yaw), cos=Math.cos(camera.yaw);
+      const dx=(strafe*cos-forward*sin)/length, dz=(-strafe*sin-forward*cos)/length;
+      const distance=world.move(player,dx*explorerSpeed*dt,dz*explorerSpeed*dt);
+      pace=clamp(distance/(explorerSpeed*dt),0,1);
+      player.phase=(player.phase+distance*Math.PI/1.6)%(2*Math.PI);
+      const turn=Math.atan2(-dx,-dz)-player.facing;
+      player.facing+=Math.atan2(Math.sin(turn),Math.cos(turn))*(1-Math.exp(-dt*18));
+    }
+    player.gait+=(pace-player.gait)*(1-Math.exp(-dt*15));
+    if(player.gait<.002) player.gait=0;
+  }
+
+  function draw(time,aspect) {
+    const dt=lastFrame===null?0:clamp((time-lastFrame)/1000,0,.05);
+    if(control!=='paused') advance(dt);
+    const heightDifference=player.y-camera.ground;
+    if(control==='paused' || Math.abs(heightDifference)<.003) camera.ground=player.y;
+    else camera.ground=clamp(camera.ground+heightDifference*(1-Math.exp(-dt*19)),player.y-.28,player.y+.28);
+    const anchor=[player.x,camera.ground+1.17,player.z];
+    const {right,back}=viewAxes(camera.yaw,camera.tilt);
+    const offset=back.map((value,i)=>value*5.45+right[i]*Math.min(.64,aspect*.9));
+    const clearance=world.cameraClearance(anchor,offset);
+    camera.fraction=Math.min(clearance,camera.fraction+
+      (clearance-camera.fraction)*(1-Math.exp(-dt*9)));
+    if(clearance-camera.fraction<.002) camera.fraction=clearance;
+    const eye=anchor.map((value,i)=>value+offset[i]*camera.fraction);
+    // Lift a squeezed camera above the avatar while keeping its shortened horizontal clearance.
+    const lift=clamp((.32-camera.fraction)/.24,0,1);
+    eye[1]+=2.35*lift**2;
+    const tilt=Math.atan2(eye[1]-anchor[1],Math.cos(camera.tilt)*5.45*camera.fraction);
+    const view=perspectiveView({yaw:camera.yaw,tilt,eye},aspect);
+    render(view,{eye,shadow:explorerShadow(player,world.surfaceElevation),avatar:explorerAvatar(player)});
+    if(control!=='paused') {
+      drawRadar();
+      updatePlace();
+    }
+    const moving=control!=='paused' &&
+      (pressed.size || player.gait || camera.fraction<clearance || camera.ground!==player.y);
+    lastFrame=moving?time:null;
+    if(moving) schedule();
+  }
+
+  function play(mode) {
+    pendingLock=false;
+    control=mode;
+    started=true;
+    canvas.classList.toggle('drag-look',mode==='drag');
+    $('drag-look-hint').hidden=mode!=='drag';
+    menu.hidden=true;
+    hud.hidden=false;
+    canvas.focus({preventScroll:true});
+    schedule();
+  }
+
+  function pause(focus=false) {
+    const wasPlaying=control!=='paused';
+    control='paused';
+    pendingLock=false;
+    pressed.clear();
+    lastFrame=null;
+    player.gait=0;
+    if(drag && canvas.hasPointerCapture(drag.id)) canvas.releasePointerCapture(drag.id);
+    drag=null;
+    if(document.pointerLockElement===canvas) document.exitPointerLock();
+    start.firstElementChild.textContent=started?'继续探索':'开始探索';
+    canvas.classList.remove('drag-look');
+    menu.hidden=false;
+    hud.hidden=true;
+    if(focus && wasPlaying) start.focus({preventScroll:true});
+    schedule();
+  }
+
+  function dragFallback() {
+    if(active && pendingLock) play('drag');
+  }
+
+  function begin() {
+    if(!active || pendingLock || control!=='paused') return;
+    pendingLock=true;
+    if(!canvas.requestPointerLock) {
+      dragFallback();
+      return;
+    }
+    try {
+      const request=canvas.requestPointerLock();
+      request?.catch(dragFallback);
+    } catch {
+      dragFallback();
+    }
+  }
+
+  function look(dx,dy) {
+    camera.yaw-=dx*.0034;
+    camera.tilt=clamp(camera.tilt+dy*.0034,-.13,.80);
+    schedule();
+  }
+
+  document.addEventListener('pointerlockchange',()=>{
+    if(document.pointerLockElement===canvas) {
+      if(active && pendingLock) play('locked');
+      else if(!active || control!=='locked') document.exitPointerLock();
+    } else if(control==='locked') {
+      pause(true);
+    }
+  });
+  document.addEventListener('pointerlockerror',dragFallback);
+  document.addEventListener('mousemove',event=>{
+    if(active && control==='locked' && document.pointerLockElement===canvas) {
+      look(event.movementX,event.movementY);
+    }
+  });
+  canvas.addEventListener('pointerdown',event=>{
+    if(!active || control!=='drag' || event.button!==0 || drag) return;
+    drag={id:event.pointerId,x:event.clientX,y:event.clientY};
+    canvas.setPointerCapture(event.pointerId);
+  });
+  canvas.addEventListener('pointermove',event=>{
+    if(drag?.id!==event.pointerId) return;
+    look(event.clientX-drag.x,event.clientY-drag.y);
+    drag.x=event.clientX;
+    drag.y=event.clientY;
+  });
+  canvas.addEventListener('lostpointercapture',event=>{
+    if(drag?.id===event.pointerId) drag=null;
+  });
+
+  window.addEventListener('keydown',event=>{
+    if(!active || event.altKey || event.ctrlKey || event.metaKey) return;
+    if(event.code==='KeyM' && !event.repeat) {
+      event.preventDefault();
+      openMap();
+    } else if(event.code==='Escape' && control!=='paused') {
+      pause(true);
+    } else if(control!=='paused' && movementKeys.has(event.code)) {
+      event.preventDefault();
+      pressed.add(event.code);
+      schedule();
+    }
+  });
+  window.addEventListener('keyup',event=>pressed.delete(event.code));
+  window.addEventListener('blur',()=>{
+    if(active && (control!=='paused' || pendingLock)) pause();
+  });
+  document.addEventListener('visibilitychange',()=>{
+    if(active && document.hidden && (control!=='paused' || pendingLock)) pause();
+  });
+  start.addEventListener('click',begin);
+  $('explore-map').addEventListener('click',openMap);
+  $('pause-explore').addEventListener('click',()=>pause(true));
+
+  return {draw,setActive(enabled) {
+    active=enabled;
+    if(enabled) start.focus({preventScroll:true});
+    else pause();
+  }};
 }
 
 
@@ -844,6 +1737,7 @@ try {
   canvas=replacement;
 }
 const context2D=renderGL?null:canvas.getContext('2d');
+let exploreMode=Boolean(renderGL);
 const defaultYaw=.25;
 const defaultTilt=.88;
 let topMode=!renderGL;
@@ -870,6 +1764,9 @@ miniBackground.scale(mini.width/extentMini.width,mini.height/extentMini.depth);
 miniBackground.translate(-extentMini.left,-extentMini.top);
 function drawFlatMap(ctx) {
   ctx.drawImage(terrain,extent.left,extent.top,extent.width,extent.depth);
+  for(const {points,material} of outdoorSurfaces) {
+    paint(ctx,points,surfaceColors[material][0],material==='step'?'#afa68e':'#a29984',.85);
+  }
   for(const buildings of Object.values(buildingGroups)) {
     for(const [,points,style='modern'] of [...buildings].sort((a,b)=>a[0]-b[0])) {
       paint(ctx,points,colors[style][0],'#797f72',1.25);
@@ -909,12 +1806,12 @@ const roads = [
   ['桃园东路',[1320,131,0]],
   ['信息大道南',[2232,659,0]],
   ['万锦路',[1792,1251,0]]
-].map(([name, point])=>{
+].map(([name,[x,z]])=>{
   const el=document.createElement('span');
   el.className='route-label';
   el.textContent=name;
   $('labels').prepend(el);
-  return {el,point:toWorld(point)};
+  return {el,point:toWorld([x,z,groundHeightAt(x,z)])};
 });
 
 function screen(point) {
@@ -947,9 +1844,9 @@ const fullTarget = () => toWorld([1534,805]);
 function schedule() {
   if(frameRequested) return;
   frameRequested=true;
-  requestAnimationFrame(()=>{
+  requestAnimationFrame(time=>{
     frameRequested=false;
-    draw();
+    draw(time);
   });
 }
 
@@ -960,7 +1857,7 @@ function updatePins() {
   const order=current?[current,...priorities.filter(id=>id!==current)]:priorities;
   for(const id of order) {
     const pin=pins.get(id);
-    const [sx,sy]=screen(toWorld(zones[id].anchor));
+    const [sx,sy]=screen(placeAnchor(id));
     pin.hidden=false;
     const w=pin.offsetWidth, h=pin.offsetHeight;
     const x=sx, y=sy-4;
@@ -993,7 +1890,11 @@ function drawMini() {
   paint(miniContext,oval(cx,cy,5,5,10),'#2a594e','#fbf9ef',2);
 }
 
-function draw() {
+function draw(time) {
+  if(exploreMode) {
+    explorer.draw(time,width/height);
+    return;
+  }
   if(renderGL) {
     renderGL(viewMatrix(view,width/height));
   } else {
@@ -1129,25 +2030,36 @@ function pick(px,py) {
   const [gx,gz]=toMap(worldAt(px,py));
   const [lx,lz]=toMap(worldAt(px,py,1));
   const rx=lx-gx, rz=lz-gz;
-  if(within(gx,gz,trackBoundary)) {
+  const trackRay=worldAt(px,py,placeAnchor('track')[1]);
+  if(within(...toMap(trackRay),trackBoundary)) {
     winner='track';
-    max=dot(back,worldAt(px,py));
+    max=dot(back,trackRay);
+  }
+  for(const [id,points] of [['southeast',southeastBridge],['library',libraryTerrace]]) {
+    const ray=worldAt(px,py,surfaceHeightAt(gx,gz));
+    const depth=dot(back,ray);
+    if(depth>max && within(...toMap(ray),points)) {
+      winner=id;
+      max=depth;
+    }
   }
   for(const [id,parts] of Object.entries(buildingGroups)) {
-    for(const [h,points] of parts) {
+    for(const [i,[height,points]] of parts.entries()) {
+      const h=buildingBase(id,points,i)+height;
       const ray=worldAt(px,py,h);
-      let hit=within(...toMap(ray),points) ? h : -1;
-      if(hit<0) {
+      let hit=within(...toMap(ray),points) ? h : -Infinity;
+      if(hit===-Infinity) {
         for(let i=0;i<points.length;i++) {
           const [a,b]=points[i], [c,d]=points[(i+1)%points.length];
           const sx=c-a, sz=d-b, determinant=rx*sz-rz*sx;
           if(Math.abs(determinant)<1e-8) continue;
           const y=((a-gx)*sz-(b-gz)*sx)/determinant;
           const along=((a-gx)*rz-(b-gz)*rx)/determinant;
-          if(y>=0 && y<=h && along>=0 && along<=1) hit=Math.max(hit,y);
+          if(y<=h && along>=0 && along<=1 &&
+            y>=groundHeightAt(gx+rx*y,gz+rz*y)-.02) hit=Math.max(hit,y);
         }
       }
-      if(hit<0) continue;
+      if(hit===-Infinity) continue;
       const depth=dot(back,worldAt(px,py,hit));
       if(depth>max) {
         winner=id;
@@ -1168,6 +2080,7 @@ const local=e=>{
 };
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
 canvas.addEventListener('pointerdown',e=>{
+  if(exploreMode) return;
   if(e.button!==0 && (e.pointerType!=='mouse' || e.button!==2)) return;
   const point=local(e);
   if(pointers.size===0) {
@@ -1233,6 +2146,7 @@ window.addEventListener('blur',()=>{
 });
 canvas.addEventListener('wheel',e=>{
   e.preventDefault();
+  if(exploreMode) return;
   const unit=e.deltaMode===1?16:e.deltaMode===2?height:1;
   zoom(Math.exp(Math.max(-600,Math.min(600,e.deltaY*unit))*.0018),...local(e));
 },{passive:false});
@@ -1271,6 +2185,33 @@ mini.addEventListener('click',e=>{
   overviewFraming=false;
   moveTo({...view,target:toWorld([x,z])});
 });
+
+function setExploreMode(enabled) {
+  if(!explorer || enabled===exploreMode) return;
+  exploreMode=enabled;
+  document.body.dataset.mode=enabled?'explore':'map';
+  pointers.clear();
+  canvas.classList.remove('dragging');
+  explorer.setActive(enabled);
+  if(!enabled) $('return-to-explore').focus({preventScroll:true});
+  resize();
+}
+
+const explorer=renderGL && createExplorer({
+  canvas,trees,render:renderGL,drawFlatMap,schedule,openMap:()=>setExploreMode(false)
+});
+if(explorer) {
+  document.body.dataset.mode='explore';
+  $('return-to-explore').hidden=false;
+  $('return-to-explore').addEventListener('click',()=>setExploreMode(true));
+  window.addEventListener('keydown',event=>{
+    if(!exploreMode && !event.defaultPrevented && event.code==='KeyM' && !event.repeat &&
+      !event.altKey && !event.ctrlKey && !event.metaKey && !$('sources').open) {
+      event.preventDefault();
+      setExploreMode(true);
+    }
+  });
+}
 if(!renderGL) {
   $('view-3d').disabled=true;
   $('view-3d').setAttribute('aria-pressed','false');

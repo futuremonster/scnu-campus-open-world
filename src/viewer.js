@@ -13,6 +13,7 @@ try {
   canvas=replacement;
 }
 const context2D=renderGL?null:canvas.getContext('2d');
+let exploreMode=Boolean(renderGL);
 const defaultYaw=.25;
 const defaultTilt=.88;
 let topMode=!renderGL;
@@ -39,6 +40,9 @@ miniBackground.scale(mini.width/extentMini.width,mini.height/extentMini.depth);
 miniBackground.translate(-extentMini.left,-extentMini.top);
 function drawFlatMap(ctx) {
   ctx.drawImage(terrain,extent.left,extent.top,extent.width,extent.depth);
+  for(const {points,material} of outdoorSurfaces) {
+    paint(ctx,points,surfaceColors[material][0],material==='step'?'#afa68e':'#a29984',.85);
+  }
   for(const buildings of Object.values(buildingGroups)) {
     for(const [,points,style='modern'] of [...buildings].sort((a,b)=>a[0]-b[0])) {
       paint(ctx,points,colors[style][0],'#797f72',1.25);
@@ -78,12 +82,12 @@ const roads = [
   ['桃园东路',[1320,131,0]],
   ['信息大道南',[2232,659,0]],
   ['万锦路',[1792,1251,0]]
-].map(([name, point])=>{
+].map(([name,[x,z]])=>{
   const el=document.createElement('span');
   el.className='route-label';
   el.textContent=name;
   $('labels').prepend(el);
-  return {el,point:toWorld(point)};
+  return {el,point:toWorld([x,z,groundHeightAt(x,z)])};
 });
 
 function screen(point) {
@@ -116,9 +120,9 @@ const fullTarget = () => toWorld([1534,805]);
 function schedule() {
   if(frameRequested) return;
   frameRequested=true;
-  requestAnimationFrame(()=>{
+  requestAnimationFrame(time=>{
     frameRequested=false;
-    draw();
+    draw(time);
   });
 }
 
@@ -129,7 +133,7 @@ function updatePins() {
   const order=current?[current,...priorities.filter(id=>id!==current)]:priorities;
   for(const id of order) {
     const pin=pins.get(id);
-    const [sx,sy]=screen(toWorld(zones[id].anchor));
+    const [sx,sy]=screen(placeAnchor(id));
     pin.hidden=false;
     const w=pin.offsetWidth, h=pin.offsetHeight;
     const x=sx, y=sy-4;
@@ -162,7 +166,11 @@ function drawMini() {
   paint(miniContext,oval(cx,cy,5,5,10),'#2a594e','#fbf9ef',2);
 }
 
-function draw() {
+function draw(time) {
+  if(exploreMode) {
+    explorer.draw(time,width/height);
+    return;
+  }
   if(renderGL) {
     renderGL(viewMatrix(view,width/height));
   } else {
@@ -298,25 +306,36 @@ function pick(px,py) {
   const [gx,gz]=toMap(worldAt(px,py));
   const [lx,lz]=toMap(worldAt(px,py,1));
   const rx=lx-gx, rz=lz-gz;
-  if(within(gx,gz,trackBoundary)) {
+  const trackRay=worldAt(px,py,placeAnchor('track')[1]);
+  if(within(...toMap(trackRay),trackBoundary)) {
     winner='track';
-    max=dot(back,worldAt(px,py));
+    max=dot(back,trackRay);
+  }
+  for(const [id,points] of [['southeast',southeastBridge],['library',libraryTerrace]]) {
+    const ray=worldAt(px,py,surfaceHeightAt(gx,gz));
+    const depth=dot(back,ray);
+    if(depth>max && within(...toMap(ray),points)) {
+      winner=id;
+      max=depth;
+    }
   }
   for(const [id,parts] of Object.entries(buildingGroups)) {
-    for(const [h,points] of parts) {
+    for(const [i,[height,points]] of parts.entries()) {
+      const h=buildingBase(id,points,i)+height;
       const ray=worldAt(px,py,h);
-      let hit=within(...toMap(ray),points) ? h : -1;
-      if(hit<0) {
+      let hit=within(...toMap(ray),points) ? h : -Infinity;
+      if(hit===-Infinity) {
         for(let i=0;i<points.length;i++) {
           const [a,b]=points[i], [c,d]=points[(i+1)%points.length];
           const sx=c-a, sz=d-b, determinant=rx*sz-rz*sx;
           if(Math.abs(determinant)<1e-8) continue;
           const y=((a-gx)*sz-(b-gz)*sx)/determinant;
           const along=((a-gx)*rz-(b-gz)*rx)/determinant;
-          if(y>=0 && y<=h && along>=0 && along<=1) hit=Math.max(hit,y);
+          if(y<=h && along>=0 && along<=1 &&
+            y>=groundHeightAt(gx+rx*y,gz+rz*y)-.02) hit=Math.max(hit,y);
         }
       }
-      if(hit<0) continue;
+      if(hit===-Infinity) continue;
       const depth=dot(back,worldAt(px,py,hit));
       if(depth>max) {
         winner=id;
@@ -337,6 +356,7 @@ const local=e=>{
 };
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
 canvas.addEventListener('pointerdown',e=>{
+  if(exploreMode) return;
   if(e.button!==0 && (e.pointerType!=='mouse' || e.button!==2)) return;
   const point=local(e);
   if(pointers.size===0) {
@@ -402,6 +422,7 @@ window.addEventListener('blur',()=>{
 });
 canvas.addEventListener('wheel',e=>{
   e.preventDefault();
+  if(exploreMode) return;
   const unit=e.deltaMode===1?16:e.deltaMode===2?height:1;
   zoom(Math.exp(Math.max(-600,Math.min(600,e.deltaY*unit))*.0018),...local(e));
 },{passive:false});
@@ -440,6 +461,33 @@ mini.addEventListener('click',e=>{
   overviewFraming=false;
   moveTo({...view,target:toWorld([x,z])});
 });
+
+function setExploreMode(enabled) {
+  if(!explorer || enabled===exploreMode) return;
+  exploreMode=enabled;
+  document.body.dataset.mode=enabled?'explore':'map';
+  pointers.clear();
+  canvas.classList.remove('dragging');
+  explorer.setActive(enabled);
+  if(!enabled) $('return-to-explore').focus({preventScroll:true});
+  resize();
+}
+
+const explorer=renderGL && createExplorer({
+  canvas,trees,render:renderGL,drawFlatMap,schedule,openMap:()=>setExploreMode(false)
+});
+if(explorer) {
+  document.body.dataset.mode='explore';
+  $('return-to-explore').hidden=false;
+  $('return-to-explore').addEventListener('click',()=>setExploreMode(true));
+  window.addEventListener('keydown',event=>{
+    if(!exploreMode && !event.defaultPrevented && event.code==='KeyM' && !event.repeat &&
+      !event.altKey && !event.ctrlKey && !event.metaKey && !$('sources').open) {
+      event.preventDefault();
+      setExploreMode(true);
+    }
+  });
+}
 if(!renderGL) {
   $('view-3d').disabled=true;
   $('view-3d').setAttribute('aria-pressed','false');
